@@ -1,0 +1,37 @@
+{% extends 'orders/base.html' %}
+{% block content %}
+<div class="card shadow mb-4 mx-auto" style="max-width: 750px;">
+  <div class="card-body">
+    <h3 class="card-title mb-3">Order #{{ order.id }} (Staff View)</h3>
+    <div class="mb-3">
+      <span class="fw-bold">User:</span> {{ order.user.username }}
+      <span class="float-end"><strong>Price:</strong> ${{ order.estimated_price }}</span>
+    </div>
+    <hr>
+    <div class="mb-2"><strong>Status:</strong> {{ order.get_status_display }}</div>
+    <form method="post" action="{% url 'orders:staff_change_status' order.id %}" class="mb-3">
+      {% csrf_token %}
+      <label>Change status:</label>
+      <select name="status" class="form-select w-auto d-inline-block">
+        {% for key, value in order.STATUS_CHOICES %}
+          <option value="{{ key }}" {% if order.status == key %}selected{% endif %}>{{ value }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-success btn-sm">Update</button>
+    </form>
+    <div class="mb-2"><strong>From:</strong> {{ order.from_address }}</div>
+    <div class="mb-2"><strong>To:</strong> {{ order.to_address }}</div>
+    <div class="mb-2"><strong>Date:</strong> {{ order.date }} <strong>Time:</strong> {{ order.time }}</div>
+    <div class="mb-2"><strong>Type:</strong> {{ order.get_move_type_display }}</div>
+    <div class="mb-2"><strong>Floors From:</strong> {{ order.floors_from }} | <strong>Floors To:</strong> {{ order.floors_to }}</div>
+    <div class="mb-2"><strong>Items:</strong> {{ order.items_description }}</div>
+    <div class="mb-2"><strong>Created at:</strong> {{ order.created_at|date:"Y-m-d H:i" }}</div>
+    <a href="{% url 'orders:staff_order_list' %}" class="btn btn-outline-secondary mt-3">Back to Orders</a>
+  </div>
+</div>
+{% if messages %}
+  {% for message in messages %}
+    <div class="alert alert-info mt-2">{{ message }}</div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

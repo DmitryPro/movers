@@ -1,0 +1,63 @@
+{% extends 'orders/base.html' %}
+{% block content %}
+<div class="card shadow mb-4 mx-auto" style="max-width: 750px;">
+  <div class="card-body">
+    <h3 class="card-title mb-3">Order #{{ order.id }}</h3>
+    <div class="mb-3">
+      <span class="fw-bold">Status:</span> {{ order.get_status_display }}
+    </div>
+    <div class="mb-2"><strong>From:</strong> {{ order.from_address }}</div>
+    <div class="mb-2"><strong>To:</strong> {{ order.to_address }}</div>
+    <div class="mb-2"><strong>Date:</strong> {{ order.date }} <strong>Time:</strong> {{ order.time }}</div>
+    <div class="mb-2"><strong>Type:</strong> {{ order.get_move_type_display }}</div>
+    <div class="mb-2"><strong>Items:</strong> {{ order.items_description }}</div>
+    <div class="mb-2"><strong>Created:</strong> {{ order.created_at|date:"Y-m-d H:i" }}</div>
+    <hr>
+
+    {% if order.status == 'new' or order.status == 'offers' %}
+      <h5 class="mt-4 mb-2">Offers from Moving Companies:</h5>
+      {% if order.offers.exists %}
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Company</th>
+              <th>Price</th>
+              <th>Message</th>
+              <th>Offer Time</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for offer in order.offers.all %}
+            <tr>
+              <td>{{ offer.company.name }}</td>
+              <td>${{ offer.price }}</td>
+              <td>{{ offer.message|default:"—" }}</td>
+              <td>{{ offer.created_at|date:"Y-m-d H:i" }}</td>
+              <td>
+                {% if not order.chosen_offer %}
+                  <form method="post" action="{% url 'orders:accept_offer' offer.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-sm">Choose</button>
+                  </form>
+                {% elif order.chosen_offer.id == offer.id %}
+                  <span class="badge bg-success">Selected</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="alert alert-warning">No offers yet. Please wait, companies will respond soon!</div>
+      {% endif %}
+    {% elif order.status == 'offer_selected' or order.status == 'in_progress' or order.status == 'done' %}
+      <h5>Selected Company:</h5>
+      <div class="mb-2"><strong>{{ order.chosen_offer.company.name }}</strong> ({{ order.chosen_offer.company.user.email }})</div>
+      <div class="mb-2"><strong>Price:</strong> ${{ order.chosen_offer.price }}</div>
+      <div class="mb-2"><strong>Message:</strong> {{ order.chosen_offer.message|default:"—" }}</div>
+    {% endif %}
+    <a href="{% url 'orders:my_orders' %}" class="btn btn-outline-secondary mt-3">Back to My Orders</a>
+  </div>
+</div>
+{% endblock %}

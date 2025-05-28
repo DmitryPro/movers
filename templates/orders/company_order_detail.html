@@ -1,0 +1,32 @@
+{% extends 'orders/base.html' %}
+{% block content %}
+<div class="card shadow mb-4 mx-auto" style="max-width: 700px;">
+  <div class="card-body">
+    <h3 class="card-title mb-3">Order #{{ order.id }} (Client: {{ order.customer.username }})</h3>
+    <div class="mb-2"><strong>From:</strong> {{ order.from_address }}</div>
+    <div class="mb-2"><strong>To:</strong> {{ order.to_address }}</div>
+    <div class="mb-2"><strong>Date:</strong> {{ order.date }} <strong>Time:</strong> {{ order.time }}</div>
+    <div class="mb-2"><strong>Type:</strong> {{ order.get_move_type_display }}</div>
+    <div class="mb-2"><strong>Items:</strong> {{ order.items_description }}</div>
+    <div class="mb-2"><strong>Created:</strong> {{ order.created_at|date:"Y-m-d H:i" }}</div>
+    <hr>
+    {% if not already_offered %}
+      <form method="post" action="{% url 'orders:make_offer' order.id %}">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label>Price ($)</label>
+          <input type="number" step="0.01" name="price" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label>Message to client (optional)</label>
+          <textarea name="message" class="form-control" rows="2"></textarea>
+        </div>
+        <button type="submit" class="btn btn-success">Send Offer</button>
+      </form>
+    {% else %}
+      <div class="alert alert-info">You have already sent an offer for this order.</div>
+    {% endif %}
+    <a href="{% url 'orders:company_order_list' %}" class="btn btn-outline-secondary mt-3">Back to Orders</a>
+  </div>
+</div>
+{% endblock %}

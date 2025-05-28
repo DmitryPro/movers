@@ -1,0 +1,35 @@
+{% extends 'orders/base.html' %}
+{% block content %}
+    <h3>My Orders</h3>
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle">
+            <thead>
+            <tr>
+                <th>Info</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Status</th>
+                <th>Price</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for order in orders %}
+                <tr>
+                    <td>
+                        <a href="{% url 'orders:order_detail' order.id %}"
+                           class="btn btn-link btn-sm">#{{ order.id }}</a>
+                    </td>
+                    <td>{{ order.date }}</td>
+                    <td>{{ order.get_move_type_display }}</td>
+                    <td>{{ order.from_address }}</td>
+                    <td>{{ order.to_address }}</td>
+                    <td>{{ order.get_status_display }}</td>
+                    <td>${{ order.estimated_price }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

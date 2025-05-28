@@ -1,0 +1,30 @@
+{% extends 'orders/base.html' %}
+{% block content %}
+<h3>New Orders from Clients</h3>
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>From</th>
+      <th>To</th>
+      <th>Date</th>
+      <th>Type</th>
+      <th>Details</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for order in orders %}
+    <tr>
+      <td>#{{ order.id }}</td>
+      <td>{{ order.from_address }}</td>
+      <td>{{ order.to_address }}</td>
+      <td>{{ order.date }}</td>
+      <td>{{ order.get_move_type_display }}</td>
+      <td>
+        <a href="{% url 'orders:company_order_detail' order.id %}" class="btn btn-primary btn-sm">View & Offer</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

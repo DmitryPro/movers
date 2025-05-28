@@ -1,0 +1,204 @@
+{% extends 'orders/base.html' %}
+{% load static %}
+{% block content %}
+<div class="card shadow mb-4 mx-auto" style="max-width: 700px;">
+  <div class="card-body">
+    <h3 class="card-title mb-3">Create Moving Order</h3>
+    <form method="post" id="orderForm" novalidate>
+      {% csrf_token %}
+      <div class="mb-3">
+        <label for="id_from_address" class="form-label">From Address</label>
+        <input type="text" class="form-control" id="id_from_address" name="from_address"
+               placeholder="Start typing address..." value="{{ form.from_address.value|default:'' }}" required autocomplete="off">
+      </div>
+      <div class="mb-3">
+        <label for="id_to_address" class="form-label">To Address</label>
+        <input type="text" class="form-control" id="id_to_address" name="to_address"
+               placeholder="Start typing address..." value="{{ form.to_address.value|default:'' }}" required autocomplete="off">
+      </div>
+      <!-- остальные поля формы как раньше... -->
+      <div class="row">
+        <div class="col mb-3">
+          <label for="id_date" class="form-label">Date</label>
+          <input type="date" class="form-control" id="id_date" name="date" value="{{ form.date.value|default:'' }}" required>
+        </div>
+        <div class="col mb-3">
+          <label for="id_time" class="form-label">Time</label>
+          <input type="time" class="form-control" id="id_time" name="time" value="{{ form.time.value|default:'' }}" required>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label for="id_move_type" class="form-label">Move Type</label>
+        <select class="form-select" id="id_move_type" name="move_type" required>
+          <option value="local" {% if form.move_type.value == "local" %}selected{% endif %}>Local</option>
+          <option value="interstate" {% if form.move_type.value == "interstate" %}selected{% endif %}>Interstate</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="col mb-3">
+          <label for="id_floors_from" class="form-label">Floors From</label>
+          <input type="number" min="1" class="form-control" id="id_floors_from" name="floors_from" value="{{ form.floors_from.value|default:1 }}" required>
+        </div>
+        <div class="col mb-3">
+          <label for="id_floors_to" class="form-label">Floors To</label>
+          <input type="number" min="1" class="form-control" id="id_floors_to" name="floors_to" value="{{ form.floors_to.value|default:1 }}" required>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label for="id_items_description" class="form-label">Items Description</label>
+        <textarea class="form-control" id="id_items_description" name="items_description" rows="3" placeholder="List main items, e.g. sofa, bed, fridge...">{{ form.items_description.value|default:'' }}</textarea>
+      </div>
+      <!-- Скрытое поле для передачи расстояния на сервер -->
+      <input type="hidden" id="distance_km" name="distance_km" value="">
+      <button class="btn btn-primary w-100" type="submit">Create Order</button>
+    </form>
+
+    <div class="mt-4">
+      <h5>Route Preview</h5>
+      <div id="map" style="height: 350px; width: 100%; border-radius: 8px;"></div>
+      <div id="routeDistance" class="mt-2 text-primary fw-bold"></div> <!-- выводим расстояние -->
+    </div>
+
+    {% if form.errors %}
+      <div class="alert alert-danger mt-3">
+        <ul>
+        {% for field in form %}
+          {% for error in field.errors %}
+            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+          {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+        {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Leaflet CSS and JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<style>
+.autocomplete-suggestions {
+  border: 1px solid #ccc; background: #fff; position: absolute; z-index: 9999;
+  max-height: 200px; overflow-y: auto; width: 90%;
+}
+.autocomplete-suggestion {
+  padding: 8px 10px; cursor: pointer;
+}
+.autocomplete-suggestion:hover {
+  background: #e9ecef;
+}
+</style>
+<script>
+// =========== Address Autocomplete (Photon) ===========
+function createAutocomplete(inputId) {
+  const input = document.getElementById(inputId);
+  let suggestionsDiv;
+  input.addEventListener('input', function() {
+    const val = this.value;
+    if(val.length < 3) {
+      if (suggestionsDiv) suggestionsDiv.style.display = 'none';
+      return;
+    }
+    fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&limit=5`)
+      .then(res => res.json())
+      .then(data => {
+        if (!suggestionsDiv) {
+          suggestionsDiv = document.createElement('div');
+          suggestionsDiv.className = 'autocomplete-suggestions';
+          input.parentNode.appendChild(suggestionsDiv);
+          suggestionsDiv.style.position = 'absolute';
+          suggestionsDiv.style.left = input.offsetLeft + "px";
+          suggestionsDiv.style.top = (input.offsetTop + input.offsetHeight) + "px";
+          suggestionsDiv.style.width = input.offsetWidth + "px";
+        }
+        suggestionsDiv.innerHTML = '';
+        (data.features || []).forEach(function(feature) {
+          let suggestion = document.createElement('div');
+          suggestion.className = 'autocomplete-suggestion';
+          suggestion.innerText = feature.properties.name + (feature.properties.city ? ', ' + feature.properties.city : '') + (feature.properties.country ? ', ' + feature.properties.country : '');
+          suggestion.dataset.lat = feature.geometry.coordinates[1];
+          suggestion.dataset.lon = feature.geometry.coordinates[0];
+          suggestion.addEventListener('mousedown', function(e) {
+            input.value = this.innerText;
+            input.dataset.lat = this.dataset.lat;
+            input.dataset.lon = this.dataset.lon;
+            suggestionsDiv.style.display = 'none';
+            updateMapAndRoute();
+          });
+          suggestionsDiv.appendChild(suggestion);
+        });
+        suggestionsDiv.style.display = 'block';
+      });
+  });
+  input.addEventListener('blur', function() {
+    setTimeout(function() {
+      if (suggestionsDiv) suggestionsDiv.style.display = 'none';
+    }, 150);
+  });
+}
+
+createAutocomplete('id_from_address');
+createAutocomplete('id_to_address');
+
+// =========== Leaflet Map & Route ===========
+var map = L.map('map').setView([40.7128, -74.0060], 12); // New York default
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
+
+var fromMarker, toMarker, routeLayer;
+
+function updateMapAndRoute() {
+  var fromInput = document.getElementById('id_from_address');
+  var toInput = document.getElementById('id_to_address');
+  var fromLat = fromInput.dataset.lat, fromLon = fromInput.dataset.lon;
+  var toLat = toInput.dataset.lat, toLon = toInput.dataset.lon;
+  if (fromLat && fromLon) {
+    if (fromMarker) map.removeLayer(fromMarker);
+    fromMarker = L.marker([fromLat, fromLon]).addTo(map).bindPopup("From").openPopup();
+    map.panTo([fromLat, fromLon]);
+  }
+  if (toLat && toLon) {
+    if (toMarker) map.removeLayer(toMarker);
+    toMarker = L.marker([toLat, toLon]).addTo(map).bindPopup("To").openPopup();
+    map.panTo([toLat, toLon]);
+  }
+  // Очистим маршрут и расстояние если нет обоих точек
+  if (routeLayer) {
+    map.removeLayer(routeLayer);
+    routeLayer = null;
+  }
+  document.getElementById('routeDistance').innerHTML = "";
+  document.getElementById('distance_km').value = "";
+
+  // Если обе точки есть, строим маршрут
+  if (fromLat && fromLon && toLat && toLon) {
+    fetch(`https://router.project-osrm.org/route/v1/driving/${fromLon},${fromLat};${toLon},${toLat}?overview=full&geometries=geojson`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.routes && data.routes.length) {
+          routeLayer = L.geoJSON(data.routes[0].geometry, {color: 'blue'}).addTo(map);
+          map.fitBounds(routeLayer.getBounds());
+          // Расстояние в метрах, переводим в км и мили
+          var meters = data.routes[0].distance;
+          var km = (meters / 1000).toFixed(2);
+          var miles = (meters / 1609.34).toFixed(2);
+          document.getElementById('routeDistance').innerHTML =
+              `<i class="bi bi-geo-alt-fill"></i> <b>Distance:</b> ${km} km / ${miles} miles`;
+          document.getElementById('distance_km').value = km; // Можно и мили, если хочешь
+        }
+      });
+  }
+}
+
+// Initial try to plot if value already present
+window.onload = function() {
+  setTimeout(updateMapAndRoute, 400);
+}
+document.getElementById('id_from_address').addEventListener('change', updateMapAndRoute);
+document.getElementById('id_to_address').addEventListener('change', updateMapAndRoute);
+</script>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'orders/base.html' %}
+{% block content %}
+<h3>My Offers</h3>
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th>Order</th>
+      <th>Client</th>
+      <th>Price</th>
+      <th>Status</th>
+      <th>Message</th>
+      <th>Sent at</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for offer in offers %}
+    <tr>
+      <td>#{{ offer.order.id }}</td>
+      <td>{{ offer.order.customer.username }}</td>
+      <td>${{ offer.price }}</td>
+      <td>
+        {% if offer.status == 'accepted' %}
+          <span class="badge bg-success">Accepted</span>
+        {% elif offer.status == 'declined' %}
+          <span class="badge bg-danger">Declined</span>
+        {% else %}
+          <span class="badge bg-secondary">Pending</span>
+        {% endif %}
+      </td>
+      <td>{{ offer.message|default:"—" }}</td>
+      <td>{{ offer.created_at|date:"Y-m-d H:i" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
